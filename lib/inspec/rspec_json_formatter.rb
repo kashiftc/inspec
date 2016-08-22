@@ -364,11 +364,9 @@ class InspecRspecCli < InspecRspecJson # rubocop:disable Metrics/ClassLength
 
   def print_tests
     control_result = @current_control[:results]
-    title = control_result[0][:code_desc].split[0..1].join(' ')
-    puts '  ' + title
     control_result.each do |test|
       control_id = ''
-      test_result = test[:code_desc].split[2..-1].join(' ')
+      test_result = test[:code_desc]
       status_indicator = test[:status_type]
       print_line(
         color:      @colors[status_indicator] || '',
