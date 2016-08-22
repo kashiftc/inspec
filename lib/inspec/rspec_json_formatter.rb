@@ -229,12 +229,14 @@ class InspecRspecCli < InspecRspecJson # rubocop:disable Metrics/ClassLength
     @current_control = nil
     @current_profile = nil
     @missing_controls = []
+    @anonymous_tests = []
     super(*args)
   end
 
   def close(_notification)
     flush_current_control
     output.puts('') unless @current_control.nil?
+    print_tests
 
     @profiles_info.each do |_id, profile|
       next if profile[:already_printed]
@@ -246,7 +248,6 @@ class InspecRspecCli < InspecRspecJson # rubocop:disable Metrics/ClassLength
       )
       output.puts('')
     end
-
     res = @output_hash[:summary]
     passed = res[:example_count] - res[:failure_count] - res[:skip_count]
     s = format('Summary: %s%d successful%s, %s%d failures%s, %s%d skipped%s',
@@ -363,18 +364,22 @@ class InspecRspecCli < InspecRspecJson # rubocop:disable Metrics/ClassLength
   end
 
   def print_tests
-    control_result = @current_control[:results]
-    control_result.each do |test|
-      control_id = ''
-      test_result = test[:code_desc]
-      status_indicator = test[:status_type]
-      print_line(
-        color:      @colors[status_indicator] || '',
-        indicator:  @indicators['empty'] + @indicators[status_indicator] || @indicators['unknown'],
-        summary:    format_lines(test_result, @indicators['empty']),
-        id:         control_id,
-        profile:    @current_control[:profile_id],
-      )
+    @anonymous_tests.each do |control|
+      control_result = control[:results]
+      title = control_result[0][:code_desc].split[0..1].join(' ')
+      puts '  ' + title
+      control_result.each do |test|
+        control_id = ''
+        test_result = test[:code_desc].split[2..-1].join(' ')
+        status_indicator = test[:status_type]
+        print_line(
+          color:      @colors[status_indicator] || '',
+          indicator:  @indicators['empty'] + @indicators[status_indicator] || @indicators['unknown'],
+          summary:    format_lines(test_result, @indicators['empty']),
+          id:         control_id,
+          profile:    control[:profile_id],
+        )
+      end
     end
   end
 
@@ -391,7 +396,7 @@ class InspecRspecCli < InspecRspecJson # rubocop:disable Metrics/ClassLength
     control_id = @current_control[:id].to_s
     control_id += ': '
     if control_id.start_with? '(generated from '
-      print_tests
+      @anonymous_tests.push(@current_control)
     else
       print_line(
         color:      @colors[summary_indicator] || '',
